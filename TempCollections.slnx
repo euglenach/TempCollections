@@ -1,1 +1,4 @@
-<Solution />
+<Solution>
+  <Project Path="src/TempCollections/TempCollections.csproj" />
+  <Project Path="tests/TempCollections.Tests/TempCollections.Tests.csproj" />
+</Solution>

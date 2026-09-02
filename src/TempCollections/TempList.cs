@@ -8,12 +8,12 @@ using System.Runtime.CompilerServices;
 
 public ref struct TempList<T>
 {
-    private T[] array;
+    private T[]? array;
     private int size;
     
     public TempList(int defaultCapacity)
     {
-        array = ArrayPool<T>.Shared.Rent(defaultCapacity);
+        array = defaultCapacity == 0 ? null : ArrayPool<T>.Shared.Rent(defaultCapacity);
         size = 0;
     }
     
@@ -26,19 +26,19 @@ public ref struct TempList<T>
     public Span<T> Span
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => array.AsSpan(0, size);
+        get => array is null ? Span<T>.Empty : array.AsSpan(0, size);
     }
 
     public Memory<T> Memory
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => array.AsMemory(0, size);
+        get => array is null ? Memory<T>.Empty : array.AsMemory(0, size);
     }
     
     public ArraySegment<T> ArraySegment
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => new(array, 0, size);
+        get => array is null ? ArraySegment<T>.Empty : new(array, 0, size);
     }
     
     public IEnumerable<T> AsEnumerable()
@@ -72,13 +72,13 @@ public ref struct TempList<T>
         }
         if(i < size)
         {
-            Array.Copy(array, i + 1, array, i, size - i - 1);
+            Array.Copy(array!, i + 1, array!, i, size - i - 1);
         }
         size--;
         
         if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            array[size] = default!;
+            array![size] = default!;
         }
     }
     
@@ -92,7 +92,7 @@ public ref struct TempList<T>
         }
         if(i < index - 1)
         {
-            array[i] = array[index - 1];
+            array![i] = array[index - 1];
         }
         size--;
     }
@@ -100,7 +100,7 @@ public ref struct TempList<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item)
     {
-        return Array.IndexOf(array, item, 0, size);
+        return array is null ? -1 : Array.IndexOf(array, item, 0, size);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -127,8 +127,8 @@ public ref struct TempList<T>
     private void Resize()
     {
         var newArray = ArrayPool<T>.Shared.Rent(size * 2);
-        Array.Copy(array, newArray, size);
-        ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
+        Array.Copy(array!, newArray, size);
+        ArrayPool<T>.Shared.Return(array!, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
         array = newArray;
     }
     

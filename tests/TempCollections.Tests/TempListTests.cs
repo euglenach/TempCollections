@@ -331,6 +331,49 @@ public class TempListTests
     }
 
     [Fact]
+    public void RemoveRange_ShiftsRemainingItemsAndPreservesTheirOrder()
+    {
+        var list = CreateList(10, 20, 30, 40, 50, 60);
+        try
+        {
+            list.RemoveRange(2, 3);
+
+            Assert.Equal(3, list.Size);
+            Assert.Equal([10, 20, 60], list.Span.ToArray());
+
+            list.RemoveRange(list.Size, 0);
+            Assert.Equal([10, 20, 60], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveRange_ThrowsForAnInvalidRange()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRange(-1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRange(4, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRange(1, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRange(2, 2));
+
+        static void RemoveRange(int index, int count)
+        {
+            var list = new TempList<int>(3);
+            try
+            {
+                list.AddRange([10, 20, 30]);
+                list.RemoveRange(index, count);
+            }
+            finally
+            {
+                list.Dispose();
+            }
+        }
+    }
+
+    [Fact]
     public void RemoveAtSwapBack_ReplacesRemovedItemWithLastItem()
     {
         var list = CreateList(10, 20, 30, 40);

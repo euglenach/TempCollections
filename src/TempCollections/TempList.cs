@@ -149,6 +149,41 @@ public ref struct TempList<T>
 
         size = index - 1;
     }
+
+    /// <summary>
+    /// Removes a range of items and preserves the order of the remaining items.
+    /// </summary>
+    public void RemoveRange(int index, int count)
+    {
+        var currentSize = size;
+        if((uint)index > (uint)currentSize)
+        {
+            ThrowArgumentOutOfRangeException(nameof(index));
+        }
+
+        if((uint)count > (uint)(currentSize - index))
+        {
+            ThrowArgumentOutOfRangeException(nameof(count));
+        }
+
+        if(count == 0)
+        {
+            return;
+        }
+
+        var newSize = currentSize - count;
+        if(index < newSize)
+        {
+            buffer.Slice(index + count, currentSize - index - count).CopyTo(buffer.Slice(index));
+        }
+
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            buffer.Slice(newSize, count).Clear();
+        }
+
+        size = newSize;
+    }
     
     /// <summary>
     /// Removes the item at the specified index by moving the last item into its place.

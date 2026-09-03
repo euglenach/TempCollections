@@ -184,7 +184,54 @@ public ref struct TempList<T>
 
         size = newSize;
     }
-    
+
+    /// <summary>
+    /// Removes all items that match the specified predicate while preserving the order of the remaining items.
+    /// </summary>
+    /// <param name="match">The predicate used to identify items to remove.</param>
+    /// <returns>The number of removed items.</returns>
+    public int RemoveAll(Predicate<T> match)
+    {
+        ArgumentNullException.ThrowIfNull(match);
+
+        var originalSize = size;
+        if(originalSize == 0)
+        {
+            return 0;
+        }
+
+        ref var first = ref MemoryMarshal.GetReference(buffer);
+        var freeIndex = 0;
+        while(freeIndex < originalSize && !match(Unsafe.Add(ref first, freeIndex)))
+        {
+            freeIndex++;
+        }
+
+        if(freeIndex == originalSize)
+        {
+            return 0;
+        }
+
+        for(var current = freeIndex + 1; current < originalSize; current++)
+        {
+            var item = Unsafe.Add(ref first, current);
+            if(!match(item))
+            {
+                Unsafe.Add(ref first, freeIndex) = item;
+                freeIndex++;
+            }
+        }
+
+        var removedCount = originalSize - freeIndex;
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            MemoryMarshal.CreateSpan(ref Unsafe.Add(ref first, freeIndex), removedCount).Clear();
+        }
+
+        size = freeIndex;
+        return removedCount;
+    }
+
     /// <summary>
     /// Removes the item at the specified index by moving the last item into its place.
     /// The order of remaining items is not preserved.

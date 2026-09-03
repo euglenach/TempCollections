@@ -374,6 +374,96 @@ public class TempListTests
     }
 
     [Fact]
+    public void RemoveAll_RemovesMatchingItemsPreservesOrderAndReturnsTheirCount()
+    {
+        var list = CreateList(10, 21, 30, 41, 50, 61);
+        try
+        {
+            var removedCount = list.RemoveAll(static value => value % 10 == 0);
+
+            Assert.Equal(3, removedCount);
+            Assert.Equal([21, 41, 61], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAll_WithNoMatches_DoesNotModifyTheList()
+    {
+        var list = CreateList(10, 20, 30);
+        try
+        {
+            var removedCount = list.RemoveAll(static value => value < 0);
+
+            Assert.Equal(0, removedCount);
+            Assert.Equal([10, 20, 30], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAll_WithAllMatches_ClearsTheList()
+    {
+        var list = CreateList(10, 20, 30);
+        try
+        {
+            var removedCount = list.RemoveAll(static _ => true);
+
+            Assert.Equal(3, removedCount);
+            Assert.Equal(0, list.Size);
+            Assert.Empty(list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAll_ClearsVacatedReferenceSlots()
+    {
+        var list = new TempList<string>(4);
+        try
+        {
+            list.AddRange(new[] { "a", "b", "c", "d" });
+
+            Assert.Equal(2, list.RemoveAll(static value => value is "b" or "d"));
+            Assert.Equal(["a", "c"], list.Span.ToArray());
+            Assert.Null(list.ArraySegment.Array![2]);
+            Assert.Null(list.ArraySegment.Array![3]);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAll_WithANullPredicate_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(RemoveAllWithNullPredicate);
+
+        static void RemoveAllWithNullPredicate()
+        {
+            var list = new TempList<int>(1);
+            try
+            {
+                list.RemoveAll(null!);
+            }
+            finally
+            {
+                list.Dispose();
+            }
+        }
+    }
+
+    [Fact]
     public void RemoveAtSwapBack_ReplacesRemovedItemWithLastItem()
     {
         var list = CreateList(10, 20, 30, 40);

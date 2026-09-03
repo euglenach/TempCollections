@@ -195,10 +195,7 @@ public class TempListBenchmarks
         var list = new TempList<int>(Count);
         try
         {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
+            list.AddRange(values);
 
             var sum = 0;
             while (list.Size > 0)
@@ -263,10 +260,7 @@ public class TempListBenchmarks
         var list = new TempList<int>(Count);
         try
         {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
+            list.AddRange(values);
 
             var sum = 0;
             while (list.Size > 0)

@@ -108,6 +108,112 @@ public class TempListTests
     }
 
     [Fact]
+    public void AddUnchecked_WithReservedCapacity_AppendsItems()
+    {
+        var list = new TempList<int>(0);
+        try
+        {
+            list.EnsureCapacity(3);
+            list.AddUnchecked(10);
+            list.AddUnchecked(20);
+            list.AddUnchecked(30);
+
+            Assert.Equal([10, 20, 30], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void AddRange_CanAppendItsOwnSpanWhileGrowing()
+    {
+        var list = new TempList<int>(0);
+        try
+        {
+            list.AddRange(Enumerable.Range(0, 40).ToArray());
+            list.AddRange(list.Span);
+
+            Assert.Equal(Enumerable.Range(0, 40).Concat(Enumerable.Range(0, 40)), list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void AddRange_CanAppendItsOwnSpanWithoutGrowing()
+    {
+        var list = new TempList<int>(4);
+        try
+        {
+            list.Add(10);
+            list.Add(20);
+            list.AddRange(list.Span);
+
+            Assert.Equal([10, 20, 10, 20], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void EnsureCapacityAndClear_ResetTheList()
+    {
+        var list = new TempList<int>(0);
+        try
+        {
+            list.EnsureCapacity(4);
+            list.AddRange([10, 20, 30, 40]);
+            list.Clear();
+
+            Assert.Equal(0, list.Size);
+            Assert.Empty(list.Span.ToArray());
+            Assert.Empty(list.Memory.Span.ToArray());
+            Assert.Equal(0, list.ArraySegment.Count);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void EnsureCapacity_WithNegativeCapacity_Throws()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+        {
+            var list = new TempList<int>(0);
+            try
+            {
+                list.EnsureCapacity(-1);
+            }
+            finally
+            {
+                list.Dispose();
+            }
+        });
+    }
+
+    [Fact]
+    public void CollectionExpression_CreatesTheList()
+    {
+        TempList<int> list = [10, 20, 30];
+        try
+        {
+            Assert.Equal([10, 20, 30], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
     public void Views_ExposeExactlyTheAddedItems()
     {
         var list = new TempList<int>(3);

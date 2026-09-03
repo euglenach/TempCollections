@@ -2,7 +2,6 @@ namespace TempCollections.Benchmarks;
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Order;
-using SandboxTempList = TempCollections.Sandbox.TempList<int>;
 
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.Default)]
@@ -56,68 +55,12 @@ public class TempListBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("Add: preallocated")]
-    public int SandboxTempList_AddWithCapacity()
-    {
-        var list = new SandboxTempList(Count);
-        try
-        {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
-
-            return list.Size;
-        }
-        finally
-        {
-            list.Dispose();
-        }
-    }
-
-    [Benchmark]
-    [BenchmarkCategory("Add: preallocated")]
-    public int SandboxTempList_AddUncheckedWithCapacity()
-    {
-        var list = new SandboxTempList(Count);
-        try
-        {
-            foreach (var value in values)
-            {
-                list.AddUnchecked(value);
-            }
-
-            return list.Size;
-        }
-        finally
-        {
-            list.Dispose();
-        }
-    }
-
-    [Benchmark]
     [BenchmarkCategory("AddRange: preallocated")]
     public int List_AddRangeWithCapacity()
     {
         var list = new List<int>(Count);
         list.AddRange(values);
         return list.Count;
-    }
-
-    [Benchmark]
-    [BenchmarkCategory("AddRange: preallocated")]
-    public int SandboxTempList_AddRangeWithCapacity()
-    {
-        var list = new SandboxTempList(Count);
-        try
-        {
-            list.AddRange(values);
-            return list.Size;
-        }
-        finally
-        {
-            list.Dispose();
-        }
     }
 
     [Benchmark]
@@ -138,26 +81,6 @@ public class TempListBenchmarks
     public int TempList_AddWithGrowth()
     {
         var list = new TempList<int>(0);
-        try
-        {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
-
-            return list.Size;
-        }
-        finally
-        {
-            list.Dispose();
-        }
-    }
-
-    [Benchmark]
-    [BenchmarkCategory("Add: growing")]
-    public int SandboxTempList_AddWithGrowth()
-    {
-        var list = new SandboxTempList(0);
         try
         {
             foreach (var value in values)
@@ -195,33 +118,6 @@ public class TempListBenchmarks
         var list = new TempList<int>(Count);
         try
         {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
-
-            var sum = 0;
-            while (list.Size > 0)
-            {
-                sum += list[0];
-                list.RemoveAt(0);
-            }
-
-            return sum;
-        }
-        finally
-        {
-            list.Dispose();
-        }
-    }
-
-    [Benchmark]
-    [BenchmarkCategory("RemoveAt: front")]
-    public int SandboxTempList_RemoveAtFront()
-    {
-        var list = new SandboxTempList(Count);
-        try
-        {
             list.AddRange(values);
 
             var sum = 0;
@@ -238,7 +134,7 @@ public class TempListBenchmarks
             list.Dispose();
         }
     }
-
+    
     [Benchmark]
     [BenchmarkCategory("RemoveAt: swap back")]
     public int List_RemoveAtSwapBack()
@@ -261,33 +157,6 @@ public class TempListBenchmarks
     public int TempList_RemoveAtSwapBack()
     {
         var list = new TempList<int>(Count);
-        try
-        {
-            foreach (var value in values)
-            {
-                list.Add(value);
-            }
-
-            var sum = 0;
-            while (list.Size > 0)
-            {
-                sum += list[0];
-                list.RemoveAtSwapBack(0);
-            }
-
-            return sum;
-        }
-        finally
-        {
-            list.Dispose();
-        }
-    }
-
-    [Benchmark]
-    [BenchmarkCategory("RemoveAt: swap back")]
-    public int SandboxTempList_RemoveAtSwapBack()
-    {
-        var list = new SandboxTempList(Count);
         try
         {
             list.AddRange(values);

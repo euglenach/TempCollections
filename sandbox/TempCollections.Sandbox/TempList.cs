@@ -128,17 +128,15 @@ public ref struct TempList<T>
             ThrowArgumentOutOfRangeException(index, i);
         }
 
-        if(i < index - 1)
-        {
-            Unsafe.Add(ref MemoryMarshal.GetReference(buffer), i) = Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index - 1);
-        }
+        var lastIndex = index - 1;
+        Unsafe.Add(ref MemoryMarshal.GetReference(buffer), i) = Unsafe.Add(ref MemoryMarshal.GetReference(buffer), lastIndex);
 
         if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index - 1) = default!;
+            Unsafe.Add(ref MemoryMarshal.GetReference(buffer), lastIndex) = default!;
         }
 
-        size = index - 1;
+        size = lastIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -176,6 +176,9 @@ public class SandboxTempListTests
 
             list.RemoveAtSwapBack(0);
             Assert.Equal([40, 30], list.Span.ToArray());
+
+            list.RemoveAtSwapBack(1);
+            Assert.Equal([40], list.Span.ToArray());
         }
         finally
         {

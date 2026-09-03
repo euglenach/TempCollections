@@ -4,6 +4,12 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+/// <summary>
+/// Provides a stack-only, pooled, growable list for short-lived data.
+/// </summary>
+/// <remarks>
+/// Dispose the list to return any rented array to the pool. This type is not thread-safe.
+/// </remarks>
 [CollectionBuilder(typeof(TempList), nameof(TempList.Create))]
 public ref struct TempList<T>
 {
@@ -11,6 +17,9 @@ public ref struct TempList<T>
     private T[]? pooledArray;
     private int size;
 
+    /// <summary>
+    /// Initializes an empty list with the requested initial capacity.
+    /// </summary>
     public TempList(int defaultCapacity)
     {
         if(defaultCapacity == 0)
@@ -26,6 +35,9 @@ public ref struct TempList<T>
         size = 0;
     }
 
+    /// <summary>
+    /// Initializes an empty list over the supplied initial buffer.
+    /// </summary>
     public TempList(Span<T> initialBuffer)
     {
         pooledArray = null;
@@ -33,18 +45,27 @@ public ref struct TempList<T>
         size = 0;
     }
 
+    /// <summary>
+    /// Gets the number of items currently stored in the list.
+    /// </summary>
     public int Size
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => size;
     }
 
+    /// <summary>
+    /// Gets a writable span over the items currently stored in the list.
+    /// </summary>
     public Span<T> Span
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(buffer), size);
     }
     
+    /// <summary>
+    /// Gets a reference to the item at the specified index.
+    /// </summary>
     public ref T this[int i]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -59,6 +80,9 @@ public ref struct TempList<T>
         }
     }
 
+    /// <summary>
+    /// Adds an item to the end of the list, growing its storage when necessary.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item)
     {
@@ -75,10 +99,12 @@ public ref struct TempList<T>
         }
     }
 
-    /// <summary>空き容量があることを前提に、容量確認をせず要素を追加します。</summary>
+    /// <summary>
+    /// Adds an item without checking that the list has spare capacity.
+    /// </summary>
     /// <remarks>
-    /// 呼び出し側で <see cref="EnsureCapacity(int)"/> などにより容量を確保してから使用してください。
-    /// 容量不足で呼び出した場合の動作は未定義で、メモリ破壊を引き起こす可能性があります。
+    /// The caller must ensure capacity before calling this method, for example with <see cref="EnsureCapacity(int)"/>.
+    /// Calling this method without spare capacity has undefined behavior and may corrupt memory.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void AddUnchecked(T item)
@@ -97,6 +123,9 @@ public ref struct TempList<T>
         size = index + 1;
     }
 
+    /// <summary>
+    /// Removes the item at the specified index and preserves the order of the remaining items.
+    /// </summary>
     public void RemoveAt(int i)
     {
         var index = size;
@@ -119,6 +148,10 @@ public ref struct TempList<T>
         size = index - 1;
     }
 
+    /// <summary>
+    /// Removes the item at the specified index by moving the last item into its place.
+    /// The order of remaining items is not preserved.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void RemoveAtSwapBack(int i)
     {
@@ -169,6 +202,9 @@ public ref struct TempList<T>
         buffer = newArray;
     }
     
+    /// <summary>
+    /// Ensures that the list can hold the specified number of items without growing.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
@@ -183,6 +219,9 @@ public ref struct TempList<T>
         }
     }
     
+    /// <summary>
+    /// Removes all items from the list.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
@@ -194,6 +233,9 @@ public ref struct TempList<T>
         size = 0;
     }
     
+    /// <summary>
+    /// Adds all items from the specified span to the end of the list.
+    /// </summary>
     public void AddRange(ReadOnlySpan<T> items)
     {
         var oldSize = size;
@@ -232,18 +274,27 @@ public ref struct TempList<T>
         size = newSize;
     }
     
+    /// <summary>
+    /// Finds the index of the specified item, or returns -1 when the item is not present.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item)
     {
         return Span.IndexOf(item);
     }
     
+    /// <summary>
+    /// Determines whether the list contains the specified item.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(T item)
     {
         return IndexOf(item) >= 0;
     }
     
+    /// <summary>
+    /// Returns any rented backing array to the shared array pool.
+    /// </summary>
     public void Dispose()
     {
         var array = pooledArray;
@@ -257,6 +308,9 @@ public ref struct TempList<T>
         ArrayPool<T>.Shared.Return(array, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
     }
 
+    /// <summary>
+    /// Returns an enumerator over the items currently stored in the list.
+    /// </summary>
     public Span<T>.Enumerator GetEnumerator() => Span.GetEnumerator();
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -273,8 +327,14 @@ public ref struct TempList<T>
     private static void ThrowOutOfMemoryException() => throw new OutOfMemoryException();
 }
 
+/// <summary>
+/// Provides factory methods for <see cref="TempList{T}"/>.
+/// </summary>
 public static class TempList
 {
+    /// <summary>
+    /// Creates a list that contains the items from the specified span.
+    /// </summary>
     public static TempList<T> Create<T>(ReadOnlySpan<T> items)
     {
         var list = new TempList<T>(items.Length);

@@ -413,6 +413,94 @@ public class TempListTests
     }
 
     [Fact]
+    public void RemoveRangeSwapBack_FillsTheGapWithTailItems()
+    {
+        var list = CreateList(10, 20, 30, 40, 50, 60);
+        try
+        {
+            list.RemoveRangeSwapBack(1, 2);
+
+            Assert.Equal(4, list.Size);
+            Assert.Equal([10, 50, 60, 40], list.Span.ToArray());
+
+            list.RemoveRangeSwapBack(3, 1);
+            Assert.Equal([10, 50, 60], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveRangeSwapBack_HandlesRangesThatOverlapTheTail()
+    {
+        var list = CreateList(10, 20, 30, 40, 50, 60);
+        try
+        {
+            list.RemoveRangeSwapBack(3, 2);
+
+            Assert.Equal([10, 20, 30, 60], list.Span.ToArray());
+
+            list.RemoveRangeSwapBack(3, 1);
+            Assert.Equal([10, 20, 30], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveRangeSwapBack_ThrowsForAnInvalidRange()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRangeSwapBack(-1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRangeSwapBack(4, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRangeSwapBack(1, -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => RemoveRangeSwapBack(2, 2));
+
+        static void RemoveRangeSwapBack(int index, int count)
+        {
+            var list = new TempList<int>(3);
+            try
+            {
+                list.AddRange([10, 20, 30]);
+                list.RemoveRangeSwapBack(index, count);
+            }
+            finally
+            {
+                list.Dispose();
+            }
+        }
+    }
+
+    [Fact]
+    public void RangeRemovals_ClearVacatedReferenceSlots()
+    {
+        var ordered = new TempList<string>(4);
+        var unordered = new TempList<string>(4);
+        try
+        {
+            ordered.AddRange(new[] { "a", "b", "c", "d" });
+            ordered.RemoveRange(1, 2);
+            Assert.Equal(["a", "d"], ordered.Span.ToArray());
+            Assert.Null(ordered.ArraySegment.Array![2]);
+            Assert.Null(ordered.ArraySegment.Array![3]);
+
+            unordered.AddRange(new[] { "a", "b", "c", "d" });
+            unordered.RemoveRangeSwapBack(1, 2);
+            Assert.Equal(["a", "d"], unordered.Span.ToArray());
+            Assert.Null(unordered.ArraySegment.Array![2]);
+            Assert.Null(unordered.ArraySegment.Array![3]);
+        }
+        finally
+        {
+            unordered.Dispose();
+            ordered.Dispose();
+        }
+    }
+
+    [Fact]
     public void GetEnumerator_SupportsForeach()
     {
         var list = CreateList(10, 20, 30);

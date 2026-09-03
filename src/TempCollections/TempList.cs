@@ -209,6 +209,44 @@ public ref struct TempList<T>
     }
 
     /// <summary>
+    /// Removes a range of items by filling the gap with items from the end of the list.
+    /// The order of remaining items is not preserved.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveRangeSwapBack(int index, int count)
+    {
+        var currentSize = size;
+        if((uint)index > (uint)currentSize)
+        {
+            ThrowArgumentOutOfRangeException(nameof(index));
+        }
+
+        if((uint)count > (uint)(currentSize - index))
+        {
+            ThrowArgumentOutOfRangeException(nameof(count));
+        }
+
+        if(count == 0)
+        {
+            return;
+        }
+
+        var newSize = currentSize - count;
+        var movedCount = Math.Min(count, newSize - index);
+        if(movedCount != 0)
+        {
+            buffer.Slice(currentSize - movedCount, movedCount).CopyTo(buffer.Slice(index));
+        }
+
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            buffer.Slice(newSize, count).Clear();
+        }
+
+        size = newSize;
+    }
+
+    /// <summary>
     /// Ensures that the list can hold the specified number of items without growing.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

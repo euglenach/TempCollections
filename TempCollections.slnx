@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="sandbox/TempCollections.Sandbox/TempCollections.Sandbox.csproj" />
   <Project Path="src/TempCollections/TempCollections.csproj" />
   <Project Path="tests/TempCollections.Tests/TempCollections.Tests.csproj" />
   <Project Path="benchmarks/TempCollections.Benchmarks/TempCollections.Benchmarks.csproj" />

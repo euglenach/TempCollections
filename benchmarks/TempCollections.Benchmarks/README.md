@@ -1,6 +1,6 @@
 # TempCollections benchmarks
 
-`TempList<T>` と `List<T>` の、事前容量指定時・動的拡張時の追加、先頭削除、末尾交換削除を比較します。各ケースは要素数 16、256、1024 で実行され、メモリ割り当ても計測されます。
+`List<T>`、`TempCollections.TempList<T>`、`TempCollections.Sandbox.TempList<T>` の、事前容量指定時・動的拡張時の追加、先頭削除、末尾交換削除を比較します。各ケースは要素数 16、256、1024 で実行され、メモリ割り当ても計測されます。
 
 ```powershell
 dotnet run -c Release --project benchmarks/TempCollections.Benchmarks

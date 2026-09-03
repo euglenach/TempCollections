@@ -7,8 +7,8 @@ using SandboxTempList = TempCollections.Sandbox.TempList<int>;
 [MemoryDiagnoser]
 [Orderer(SummaryOrderPolicy.Default)]
 [RankColumn]
-[WarmupCount(1)]
-[IterationCount(1)]
+[WarmupCount(3)]
+[IterationCount(10)]
 public class TempListBenchmarks
 {
     private int[] values = [];
@@ -67,6 +67,51 @@ public class TempListBenchmarks
                 list.Add(value);
             }
 
+            return list.Size;
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("Add: preallocated")]
+    public int SandboxTempList_AddUncheckedWithCapacity()
+    {
+        var list = new SandboxTempList(Count);
+        try
+        {
+            foreach (var value in values)
+            {
+                list.AddUnchecked(value);
+            }
+
+            return list.Size;
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("AddRange: preallocated")]
+    public int List_AddRangeWithCapacity()
+    {
+        var list = new List<int>(Count);
+        list.AddRange(values);
+        return list.Count;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("AddRange: preallocated")]
+    public int SandboxTempList_AddRangeWithCapacity()
+    {
+        var list = new SandboxTempList(Count);
+        try
+        {
+            list.AddRange(values);
             return list.Size;
         }
         finally

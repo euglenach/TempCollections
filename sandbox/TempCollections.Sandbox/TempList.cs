@@ -42,24 +42,31 @@ public ref struct TempList<T>
     public Span<T> Span
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => buffer[..size];
+        get => MemoryMarshal.CreateSpan(ref MemoryMarshal.GetReference(buffer), size);
     }
     
     public ref T this[int i]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => ref Span[i];
+        get
+        {
+            if((uint)i >= (uint)size)
+            {
+                ThrowIndexOutOfRangeException();
+            }
+
+            return ref Unsafe.Add(ref MemoryMarshal.GetReference(buffer), i);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Add(T item)
     {
         var index = size;
-        var b = buffer;
-        
-        if((uint)index < (uint)b.Length)
+
+        if((uint)index < (uint)buffer.Length)
         {
-            Unsafe.Add(ref MemoryMarshal.GetReference(b), index) = item;
+            Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index) = item;
             size = index + 1;
         }
         else
@@ -68,11 +75,26 @@ public ref struct TempList<T>
         }
     }
 
+    /// <summary>空き容量があることを前提に、容量確認をせず要素を追加します。</summary>
+    /// <remarks>
+    /// 呼び出し側で <see cref="EnsureCapacity(int)"/> などにより容量を確保してから使用してください。
+    /// 容量不足で呼び出した場合の動作は未定義で、メモリ破壊を引き起こす可能性があります。
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void AddUnchecked(T item)
+    {
+        var index = size;
+        Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index) = item;
+        size = index + 1;
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void AddWithResize(T item)
     {
+        var index = size;
         Resize();
-        Unsafe.Add(ref MemoryMarshal.GetReference(buffer), size++) = item;
+        Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index) = item;
+        size = index + 1;
     }
 
     public void RemoveAt(int i)
@@ -108,8 +130,7 @@ public ref struct TempList<T>
 
         if(i < index - 1)
         {
-            var b = buffer;
-            Unsafe.Add(ref MemoryMarshal.GetReference(b), i) = Unsafe.Add(ref MemoryMarshal.GetReference(b), index - 1);
+            Unsafe.Add(ref MemoryMarshal.GetReference(buffer), i) = Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index - 1);
         }
 
         if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
@@ -117,7 +138,7 @@ public ref struct TempList<T>
             Unsafe.Add(ref MemoryMarshal.GetReference(buffer), index - 1) = default!;
         }
 
-        size--;
+        size = index - 1;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -137,7 +158,6 @@ public ref struct TempList<T>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void Resize(int newSize)
     {
-        if(newSize < size) newSize = size;
         var newArray = ArrayPool<T>.Shared.Rent(newSize);
         buffer[..size].CopyTo(newArray);
 
@@ -151,6 +171,7 @@ public ref struct TempList<T>
         buffer = newArray;
     }
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void EnsureCapacity(int capacity)
     {
         if(capacity < 0)
@@ -167,9 +188,10 @@ public ref struct TempList<T>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Clear()
     {
+        var count = size;
         if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            buffer[..size].Clear();
+            buffer[..count].Clear();
         }
         size = 0;
     }
@@ -183,34 +205,39 @@ public ref struct TempList<T>
         }
 
         var newSize = oldSize + items.Length;
-        
         if((uint)newSize > (uint)buffer.Length)
         {
-            var newArray = ArrayPool<T>.Shared.Rent(newSize);
-            buffer[..oldSize].CopyTo(newArray);
-            items.CopyTo(newArray.AsSpan(oldSize));
-
-            var oldArray = pooledArray;
-            if(oldArray is not null)
-            {
-                ArrayPool<T>.Shared.Return(oldArray, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
-            }
-
-            pooledArray = newArray;
-            buffer = newArray;
+            AddRangeWithResize(items, oldSize, newSize);
         }
         else
         {
             items.CopyTo(buffer[oldSize..]);
+            size = newSize;
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void AddRangeWithResize(ReadOnlySpan<T> items, int oldSize, int newSize)
+    {
+        var newArray = ArrayPool<T>.Shared.Rent(newSize);
+        buffer[..oldSize].CopyTo(newArray);
+        items.CopyTo(newArray.AsSpan(oldSize));
+
+        var oldArray = pooledArray;
+        if(oldArray is not null)
+        {
+            ArrayPool<T>.Shared.Return(oldArray, RuntimeHelpers.IsReferenceOrContainsReferences<T>());
         }
 
+        pooledArray = newArray;
+        buffer = newArray;
         size = newSize;
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int IndexOf(T item)
     {
-        return buffer[..size].IndexOf(item);
+        return Span.IndexOf(item);
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -240,7 +267,10 @@ public ref struct TempList<T>
     
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowArgumentOutOfRangeException(string paramName) => throw new ArgumentOutOfRangeException(paramName);
-    
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowIndexOutOfRangeException() => throw new IndexOutOfRangeException();
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowOutOfMemoryException() => throw new OutOfMemoryException();
 }

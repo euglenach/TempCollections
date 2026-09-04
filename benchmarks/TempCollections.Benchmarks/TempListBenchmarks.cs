@@ -10,6 +10,8 @@ using BenchmarkDotNet.Order;
 [IterationCount(10)]
 public class TempListBenchmarks
 {
+    private static readonly Predicate<int> IsEven = static value => (value & 1) == 0;
+
     private int[] values = [];
 
     [Params(16, 256, 1024)]
@@ -169,6 +171,46 @@ public class TempListBenchmarks
             }
 
             return sum;
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("RemoveAll: half")]
+    public int List_RemoveAllEven()
+    {
+        var list = new List<int>(values);
+        return list.RemoveAll(IsEven);
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("RemoveAll: half")]
+    public int TempList_RemoveAllEven()
+    {
+        var list = new TempList<int>(Count);
+        try
+        {
+            list.AddRange(values);
+            return list.RemoveAll(IsEven);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("RemoveAll: half, swap back")]
+    public int TempList_RemoveAllSwapBackEven()
+    {
+        var list = new TempList<int>(Count);
+        try
+        {
+            list.AddRange(values);
+            return list.RemoveAllSwapBack(IsEven);
         }
         finally
         {

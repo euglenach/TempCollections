@@ -149,7 +149,143 @@ public ref struct TempList<T>
 
         size = index - 1;
     }
-    
+
+    /// <summary>
+    /// Removes a range of items and preserves the order of the remaining items.
+    /// </summary>
+    public void RemoveRange(int index, int count)
+    {
+        var currentSize = size;
+        if((uint)index > (uint)currentSize)
+        {
+            ThrowArgumentOutOfRangeException(nameof(index));
+        }
+
+        if((uint)count > (uint)(currentSize - index))
+        {
+            ThrowArgumentOutOfRangeException(nameof(count));
+        }
+
+        if(count == 0)
+        {
+            return;
+        }
+
+        var newSize = currentSize - count;
+        if(index < newSize)
+        {
+            buffer.Slice(index + count, currentSize - index - count).CopyTo(buffer.Slice(index));
+        }
+
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            buffer.Slice(newSize, count).Clear();
+        }
+
+        size = newSize;
+    }
+
+    /// <summary>
+    /// Removes all items that match the specified predicate while preserving the order of the remaining items.
+    /// </summary>
+    /// <param name="match">The predicate used to identify items to remove.</param>
+    /// <returns>The number of removed items.</returns>
+    public int RemoveAll(Predicate<T> match)
+    {
+        ArgumentNullException.ThrowIfNull(match);
+
+        var originalSize = size;
+        if(originalSize == 0)
+        {
+            return 0;
+        }
+
+        ref var first = ref MemoryMarshal.GetReference(buffer);
+        var freeIndex = 0;
+        while(freeIndex < originalSize && !match(Unsafe.Add(ref first, freeIndex)))
+        {
+            freeIndex++;
+        }
+
+        if(freeIndex == originalSize)
+        {
+            return 0;
+        }
+
+        for(var current = freeIndex + 1; current < originalSize; current++)
+        {
+            var item = Unsafe.Add(ref first, current);
+            if(!match(item))
+            {
+                Unsafe.Add(ref first, freeIndex) = item;
+                freeIndex++;
+            }
+        }
+
+        var removedCount = originalSize - freeIndex;
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            MemoryMarshal.CreateSpan(ref Unsafe.Add(ref first, freeIndex), removedCount).Clear();
+        }
+
+        size = freeIndex;
+        return removedCount;
+    }
+
+    /// <summary>
+    /// Removes all items that match the specified predicate by replacing them with items from the end of the list.
+    /// The order of the remaining items is not preserved.
+    /// </summary>
+    /// <param name="match">The predicate used to identify items to remove.</param>
+    /// <returns>The number of removed items.</returns>
+    public int RemoveAllSwapBack(Predicate<T> match)
+    {
+        ArgumentNullException.ThrowIfNull(match);
+
+        var originalSize = size;
+        if(originalSize == 0)
+        {
+            return 0;
+        }
+
+        ref var first = ref MemoryMarshal.GetReference(buffer);
+        var currentIndex = 0;
+        var lastIndex = originalSize - 1;
+        while(currentIndex <= lastIndex)
+        {
+            if(!match(Unsafe.Add(ref first, currentIndex)))
+            {
+                currentIndex++;
+                continue;
+            }
+
+            while(currentIndex < lastIndex && match(Unsafe.Add(ref first, lastIndex)))
+            {
+                lastIndex--;
+            }
+
+            if(currentIndex == lastIndex)
+            {
+                lastIndex--;
+                break;
+            }
+
+            Unsafe.Add(ref first, currentIndex) = Unsafe.Add(ref first, lastIndex);
+            currentIndex++;
+            lastIndex--;
+        }
+
+        var newSize = lastIndex + 1;
+        var removedCount = originalSize - newSize;
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            MemoryMarshal.CreateSpan(ref Unsafe.Add(ref first, newSize), removedCount).Clear();
+        }
+
+        size = newSize;
+        return removedCount;
+    }
+
     /// <summary>
     /// Removes the item at the specified index by moving the last item into its place.
     /// The order of remaining items is not preserved.
@@ -171,6 +307,44 @@ public ref struct TempList<T>
         }
 
         size = lastIndex;
+    }
+
+    /// <summary>
+    /// Removes a range of items by filling the gap with items from the end of the list.
+    /// The order of remaining items is not preserved.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void RemoveRangeSwapBack(int index, int count)
+    {
+        var currentSize = size;
+        if((uint)index > (uint)currentSize)
+        {
+            ThrowArgumentOutOfRangeException(nameof(index));
+        }
+
+        if((uint)count > (uint)(currentSize - index))
+        {
+            ThrowArgumentOutOfRangeException(nameof(count));
+        }
+
+        if(count == 0)
+        {
+            return;
+        }
+
+        var newSize = currentSize - count;
+        var movedCount = Math.Min(count, newSize - index);
+        if(movedCount != 0)
+        {
+            buffer.Slice(currentSize - movedCount, movedCount).CopyTo(buffer.Slice(index));
+        }
+
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            buffer.Slice(newSize, count).Clear();
+        }
+
+        size = newSize;
     }
 
     /// <summary>

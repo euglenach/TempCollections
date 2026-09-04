@@ -464,6 +464,102 @@ public class TempListTests
     }
 
     [Fact]
+    public void RemoveAllSwapBack_RemovesMatchingItemsAndReturnsTheirCount()
+    {
+        var list = CreateList(10, 21, 30, 41, 50, 61);
+        var predicateCalls = 0;
+        try
+        {
+            var removedCount = list.RemoveAllSwapBack(value =>
+            {
+                predicateCalls++;
+                return value % 10 == 0;
+            });
+
+            Assert.Equal(3, removedCount);
+            Assert.Equal(6, predicateCalls);
+            Assert.Equal([61, 21, 41], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAllSwapBack_WithNoMatches_DoesNotModifyTheList()
+    {
+        var list = CreateList(10, 20, 30);
+        try
+        {
+            var removedCount = list.RemoveAllSwapBack(static value => value < 0);
+
+            Assert.Equal(0, removedCount);
+            Assert.Equal([10, 20, 30], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAllSwapBack_WithAllMatches_ClearsTheList()
+    {
+        var list = CreateList(10, 20, 30);
+        try
+        {
+            var removedCount = list.RemoveAllSwapBack(static _ => true);
+
+            Assert.Equal(3, removedCount);
+            Assert.Equal(0, list.Size);
+            Assert.Empty(list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAllSwapBack_ClearsVacatedReferenceSlots()
+    {
+        var list = new TempList<string>(4);
+        try
+        {
+            list.AddRange(new[] { "a", "b", "c", "d" });
+
+            Assert.Equal(2, list.RemoveAllSwapBack(static value => value is "b" or "d"));
+            Assert.Equal(["a", "c"], list.Span.ToArray());
+            Assert.Null(list.ArraySegment.Array![2]);
+            Assert.Null(list.ArraySegment.Array![3]);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void RemoveAllSwapBack_WithANullPredicate_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(RemoveAllSwapBackWithNullPredicate);
+
+        static void RemoveAllSwapBackWithNullPredicate()
+        {
+            var list = new TempList<int>(1);
+            try
+            {
+                list.RemoveAllSwapBack(null!);
+            }
+            finally
+            {
+                list.Dispose();
+            }
+        }
+    }
+
+    [Fact]
     public void RemoveAtSwapBack_ReplacesRemovedItemWithLastItem()
     {
         var list = CreateList(10, 20, 30, 40);

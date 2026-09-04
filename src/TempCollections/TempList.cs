@@ -233,6 +233,60 @@ public ref struct TempList<T>
     }
 
     /// <summary>
+    /// Removes all items that match the specified predicate by replacing them with items from the end of the list.
+    /// The order of the remaining items is not preserved.
+    /// </summary>
+    /// <param name="match">The predicate used to identify items to remove.</param>
+    /// <returns>The number of removed items.</returns>
+    public int RemoveAllSwapBack(Predicate<T> match)
+    {
+        ArgumentNullException.ThrowIfNull(match);
+
+        var originalSize = size;
+        if(originalSize == 0)
+        {
+            return 0;
+        }
+
+        ref var first = ref MemoryMarshal.GetReference(buffer);
+        var currentIndex = 0;
+        var lastIndex = originalSize - 1;
+        while(currentIndex <= lastIndex)
+        {
+            if(!match(Unsafe.Add(ref first, currentIndex)))
+            {
+                currentIndex++;
+                continue;
+            }
+
+            while(currentIndex < lastIndex && match(Unsafe.Add(ref first, lastIndex)))
+            {
+                lastIndex--;
+            }
+
+            if(currentIndex == lastIndex)
+            {
+                lastIndex--;
+                break;
+            }
+
+            Unsafe.Add(ref first, currentIndex) = Unsafe.Add(ref first, lastIndex);
+            currentIndex++;
+            lastIndex--;
+        }
+
+        var newSize = lastIndex + 1;
+        var removedCount = originalSize - newSize;
+        if(RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            MemoryMarshal.CreateSpan(ref Unsafe.Add(ref first, newSize), removedCount).Clear();
+        }
+
+        size = newSize;
+        return removedCount;
+    }
+
+    /// <summary>
     /// Removes the item at the specified index by moving the last item into its place.
     /// The order of remaining items is not preserved.
     /// </summary>

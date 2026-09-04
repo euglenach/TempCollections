@@ -201,4 +201,20 @@ public class TempListBenchmarks
             list.Dispose();
         }
     }
+
+    [Benchmark]
+    [BenchmarkCategory("RemoveAll: half, swap back")]
+    public int TempList_RemoveAllSwapBackEven()
+    {
+        var list = new TempList<int>(Count);
+        try
+        {
+            list.AddRange(values);
+            return list.RemoveAllSwapBack(IsEven);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
 }

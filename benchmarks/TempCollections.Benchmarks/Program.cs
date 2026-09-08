@@ -6,4 +6,4 @@ using TempCollections.Benchmarks;
 var config = ManualConfig.Create(DefaultConfig.Instance)
     .AddJob(Job.Default.WithMsBuildArguments("-m:1"));
 
-BenchmarkSwitcher.FromAssembly(typeof(TempListBenchmarks).Assembly).Run(args, config);
+BenchmarkSwitcher.FromAssembly(typeof(TempHashSetBenchmarks).Assembly).Run(args, config);

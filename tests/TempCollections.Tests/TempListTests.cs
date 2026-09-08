@@ -24,6 +24,31 @@ public class TempListTests
     }
 
     [Fact]
+    public void Constructor_WithInitialBuffer_UsesBufferBeforeGrowing()
+    {
+        Span<int> initialBuffer = stackalloc int[3];
+        var list = new TempList<int>(initialBuffer);
+        try
+        {
+            list.Add(1);
+            list.Add(2);
+            initialBuffer[0] = 42;
+
+            Assert.Equal(42, list[0]);
+
+            list.Add(3);
+            list.Add(4);
+            initialBuffer[0] = 99;
+
+            Assert.Equal([42, 2, 3, 4], list.Span.ToArray());
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
     public void Constructor_WithNegativeCapacity_Throws()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new TempList<int>(-1));

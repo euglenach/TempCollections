@@ -37,7 +37,18 @@ public ref struct TempList<T>
         }
         size = 0;
     }
-    
+
+    /// <summary>
+    /// Initializes an empty list using the specified initial buffer.
+    /// </summary>
+    /// <param name="initialBuffer">The buffer to use until the list needs to grow.</param>
+    public TempList(Span<T> initialBuffer)
+    {
+        buffer = initialBuffer;
+        pooledArray = null;
+        size = 0;
+    }
+
     /// <summary>
     /// Gets the number of items currently stored in the list.
     /// </summary>

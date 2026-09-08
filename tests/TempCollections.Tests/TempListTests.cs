@@ -13,9 +13,46 @@ public class TempListTests
         {
             Assert.Equal(0, list.Size);
             Assert.Empty(list.Span.ToArray());
-            Assert.Empty(list.Memory.Span.ToArray());
-            Assert.Equal(0, list.ArraySegment.Count);
-            Assert.Empty(list.AsEnumerable());
+            Assert.True(list.TryGetMemory(out var memory));
+            Assert.Empty(memory.Span.ToArray());
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Equal(0, arraySegment.Count);
+            Assert.True(list.TryGetEnumerable(out var enumerable));
+            Assert.Empty(enumerable!);
+        }
+        finally
+        {
+            list.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Constructor_WithInitialBuffer_UsesBufferBeforeGrowing()
+    {
+        Span<int> initialBuffer = stackalloc int[3];
+        var list = new TempList<int>(initialBuffer);
+        try
+        {
+            list.Add(1);
+            list.Add(2);
+            initialBuffer[0] = 42;
+
+            Assert.Equal(42, list[0]);
+            Assert.False(list.TryGetMemory(out _));
+            Assert.False(list.TryGetArraySegment(out _));
+            Assert.False(list.TryGetEnumerable(out _));
+
+            list.Add(3);
+            list.Add(4);
+            initialBuffer[0] = 99;
+
+            Assert.Equal([42, 2, 3, 4], list.Span.ToArray());
+            Assert.True(list.TryGetMemory(out var memory));
+            Assert.Equal([42, 2, 3, 4], memory.Span.ToArray());
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Equal([42, 2, 3, 4], arraySegment);
+            Assert.True(list.TryGetEnumerable(out var enumerable));
+            Assert.Equal([42, 2, 3, 4], enumerable);
         }
         finally
         {
@@ -37,12 +74,14 @@ public class TempListTests
         {
             Assert.Equal(0, list.Size);
             Assert.Empty(list.Span.ToArray());
-            Assert.Equal(0, list.ArraySegment.Count);
+            Assert.False(list.TryGetArraySegment(out _));
 
             list.Add(42);
 
             Assert.Equal(1, list.Size);
             Assert.Equal(42, list[0]);
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Equal([42], arraySegment);
         }
         finally
         {
@@ -75,9 +114,9 @@ public class TempListTests
         {
             Assert.Equal(0, list.Size);
             Assert.Empty(list.Span.ToArray());
-            Assert.Empty(list.Memory.Span.ToArray());
-            Assert.Equal(0, list.ArraySegment.Count);
-            Assert.Empty(list.AsEnumerable());
+            Assert.False(list.TryGetMemory(out _));
+            Assert.False(list.TryGetArraySegment(out _));
+            Assert.False(list.TryGetEnumerable(out _));
             Assert.Equal(-1, list.IndexOf("missing"));
             Assert.False(list.Contains("missing"));
         }
@@ -173,8 +212,10 @@ public class TempListTests
 
             Assert.Equal(0, list.Size);
             Assert.Empty(list.Span.ToArray());
-            Assert.Empty(list.Memory.Span.ToArray());
-            Assert.Equal(0, list.ArraySegment.Count);
+            Assert.True(list.TryGetMemory(out var memory));
+            Assert.Empty(memory.Span.ToArray());
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Equal(0, arraySegment.Count);
         }
         finally
         {
@@ -224,9 +265,12 @@ public class TempListTests
             list.Add(30);
 
             Assert.Equal([10, 20, 30], list.Span.ToArray());
-            Assert.Equal([10, 20, 30], list.Memory.Span.ToArray());
-            Assert.Equal([10, 20, 30], list.ArraySegment);
-            Assert.Equal([10, 20, 30], list.AsEnumerable());
+            Assert.True(list.TryGetMemory(out var memory));
+            Assert.Equal([10, 20, 30], memory.Span.ToArray());
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Equal([10, 20, 30], arraySegment);
+            Assert.True(list.TryGetEnumerable(out var enumerable));
+            Assert.Equal([10, 20, 30], enumerable);
         }
         finally
         {
@@ -435,8 +479,9 @@ public class TempListTests
 
             Assert.Equal(2, list.RemoveAll(static value => value is "b" or "d"));
             Assert.Equal(["a", "c"], list.Span.ToArray());
-            Assert.Null(list.ArraySegment.Array![2]);
-            Assert.Null(list.ArraySegment.Array![3]);
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Null(arraySegment.Array![2]);
+            Assert.Null(arraySegment.Array![3]);
         }
         finally
         {
@@ -531,8 +576,9 @@ public class TempListTests
 
             Assert.Equal(2, list.RemoveAllSwapBack(static value => value is "b" or "d"));
             Assert.Equal(["a", "c"], list.Span.ToArray());
-            Assert.Null(list.ArraySegment.Array![2]);
-            Assert.Null(list.ArraySegment.Array![3]);
+            Assert.True(list.TryGetArraySegment(out var arraySegment));
+            Assert.Null(arraySegment.Array![2]);
+            Assert.Null(arraySegment.Array![3]);
         }
         finally
         {
@@ -670,14 +716,16 @@ public class TempListTests
             ordered.AddRange(new[] { "a", "b", "c", "d" });
             ordered.RemoveRange(1, 2);
             Assert.Equal(["a", "d"], ordered.Span.ToArray());
-            Assert.Null(ordered.ArraySegment.Array![2]);
-            Assert.Null(ordered.ArraySegment.Array![3]);
+            Assert.True(ordered.TryGetArraySegment(out var orderedArraySegment));
+            Assert.Null(orderedArraySegment.Array![2]);
+            Assert.Null(orderedArraySegment.Array![3]);
 
             unordered.AddRange(new[] { "a", "b", "c", "d" });
             unordered.RemoveRangeSwapBack(1, 2);
             Assert.Equal(["a", "d"], unordered.Span.ToArray());
-            Assert.Null(unordered.ArraySegment.Array![2]);
-            Assert.Null(unordered.ArraySegment.Array![3]);
+            Assert.True(unordered.TryGetArraySegment(out var unorderedArraySegment));
+            Assert.Null(unorderedArraySegment.Array![2]);
+            Assert.Null(unorderedArraySegment.Array![3]);
         }
         finally
         {

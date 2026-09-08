@@ -68,29 +68,59 @@ public ref struct TempList<T>
     }
 
     /// <summary>
-    /// Gets writable memory over the items currently stored in the list.
+    /// Tries to get writable memory over the items currently stored in the list.
     /// </summary>
-    public Memory<T> Memory
+    /// <param name="memory">The writable memory when the list is backed by a rented array.</param>
+    /// <returns><see langword="true"/> when the list is backed by a rented array; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetMemory(out Memory<T> memory)
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => pooledArray is null ? Memory<T>.Empty : pooledArray.AsMemory(0, size);
+        var array = pooledArray;
+        if(array is null)
+        {
+            memory = default;
+            return false;
+        }
+
+        memory = array.AsMemory(0, size);
+        return true;
     }
-    
+
     /// <summary>
-    /// Gets an array segment over the items currently stored in the list.
+    /// Tries to get an array segment over the items currently stored in the list.
     /// </summary>
-    public ArraySegment<T> ArraySegment
+    /// <param name="arraySegment">The array segment when the list is backed by a rented array.</param>
+    /// <returns><see langword="true"/> when the list is backed by a rented array; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetArraySegment(out ArraySegment<T> arraySegment)
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => pooledArray is null ? ArraySegment<T>.Empty : new(pooledArray, 0, size);
+        var array = pooledArray;
+        if(array is null)
+        {
+            arraySegment = default;
+            return false;
+        }
+
+        arraySegment = new ArraySegment<T>(array, 0, size);
+        return true;
     }
-    
+
     /// <summary>
-    /// Returns an enumerable view of the items currently stored in the list.
+    /// Tries to get an enumerable view of the items currently stored in the list.
     /// </summary>
-    public IEnumerable<T> AsEnumerable()
+    /// <param name="enumerable">The enumerable view when the list is backed by a rented array.</param>
+    /// <returns><see langword="true"/> when the list is backed by a rented array; otherwise, <see langword="false"/>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public bool TryGetEnumerable(out IEnumerable<T>? enumerable)
     {
-        return ArraySegment.AsEnumerable();
+        if(!TryGetArraySegment(out var arraySegment))
+        {
+            enumerable = null;
+            return false;
+        }
+
+        enumerable = arraySegment.AsEnumerable();
+        return true;
     }
 
     /// <summary>
